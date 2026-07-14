@@ -95,7 +95,7 @@ def welcome_text():
         "1⃣ Автоматические сделки с NFT и подарками\n"
         f"2⃣ {shield_emoji()} Полная защита обеих сторон\n"
         f"3⃣ {emoji('coin')} Реферальная программа — 50% от комиссии\n"
-        f"4⃣ {emoji('package')} Все сделки проходят через менеджера @binancesreport</blockquote>\n\n"
+        f"4⃣ {emoji('package')} Все сделки проходят между покупателем и продавцем мы не просим передачу 3-им лицам</blockquote>\n\n"
         f"{emoji('lamp')} Наш канал ─ @binance_announcements"
     )
 
